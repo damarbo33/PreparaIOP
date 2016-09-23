@@ -1,0 +1,83 @@
+# depslib dependency file v1.0
+1450443261 source:c:\program files (x86)\codeblocks\projects\preparaiop\preparaiop.cpp
+	"preparaiop.h"
+
+1450443228 c:\program files (x86)\codeblocks\projects\preparaiop\preparaiop.h
+	"Constant.h"
+	<iostream>
+	"Dirutil.h"
+	<unistd.h>
+	<cstdio>
+	<fcntl.h>
+	<iostream>
+	<fstream>
+	"ListaSimple.h"
+
+1449825344 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\constant.h
+	<fstream>
+	<sstream>
+	<string.h>
+	<vector>
+	<typeinfo>
+	<ctime>
+	<dirent.h>
+	<stdio.h>
+	<limits.h>
+	<algorithm>
+	<cctype>
+	<iomanip>
+	<cstddef>
+	<windows.h>
+
+1450443477 source:c:\program files (x86)\codeblocks\projects\preparaiop\main.cpp
+	<iostream>
+	"preparaiop.h"
+
+1445591601 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\dirutil.h
+	"fileprops.h"
+	<dirent.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	"Traza.h"
+	"ListaSimple.h"
+	<stdio.h>
+	<windows.h>
+
+1401205024 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\fileprops.h
+	<string>
+
+1398694044 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\traza.h
+	<stdio.h>
+	<time.h>
+	<string>
+	<limits.h>
+	<iostream>
+	<fstream>
+	"Constant.h"
+
+1446814674 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\listasimple.h
+	<string.h>
+	<stdio.h>
+	"Excepcion.h"
+	"Fileio.h"
+	<typeinfo>
+	"Constant.h"
+	"fileprops.h"
+
+1445243484 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\excepcion.h
+	<iostream>
+	<cmath>
+	"Traza.h"
+	"Constant.h"
+
+1433743123 c:\program files (x86)\codeblocks\externallibs\uiobjects\src\fileio.h
+	<iostream>
+	<fstream>
+	<string>
+	<algorithm>
+	<vector>
+	<iterator>
+	"Excepcion.h"
+	"Traza.h"
+
