@@ -81,3 +81,86 @@
 	"Excepcion.h"
 	"Traza.h"
 
+1450443812 source:c:\github\proyectos\preparaiop\main.cpp
+	<iostream>
+	"preparaiop.h"
+
+1450443228 c:\github\proyectos\preparaiop\preparaiop.h
+	"Constant.h"
+	<iostream>
+	"Dirutil.h"
+	<unistd.h>
+	<cstdio>
+	<fcntl.h>
+	<iostream>
+	<fstream>
+	"ListaSimple.h"
+
+1486554432 c:\github\externallibs\uiobjects\src\constant.h
+	<fstream>
+	<sstream>
+	<string.h>
+	<vector>
+	<typeinfo>
+	<ctime>
+	<dirent.h>
+	<stdio.h>
+	<limits.h>
+	<algorithm>
+	<cctype>
+	<iomanip>
+	<cstddef>
+	<stdint.h>
+	<windows.h>
+
+1478620915 c:\github\externallibs\uiobjects\src\dirutil.h
+	"fileprops.h"
+	<dirent.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	"Traza.h"
+	"ListaSimple.h"
+	<stdio.h>
+	<windows.h>
+
+1401205024 c:\github\externallibs\uiobjects\src\fileprops.h
+	<string>
+
+1398694044 c:\github\externallibs\uiobjects\src\traza.h
+	<stdio.h>
+	<time.h>
+	<string>
+	<limits.h>
+	<iostream>
+	<fstream>
+	"Constant.h"
+
+1461131489 c:\github\externallibs\uiobjects\src\listasimple.h
+	<string.h>
+	<stdio.h>
+	"Excepcion.h"
+	"Fileio.h"
+	<typeinfo>
+	"Constant.h"
+	"fileprops.h"
+
+1445243484 c:\github\externallibs\uiobjects\src\excepcion.h
+	<iostream>
+	<cmath>
+	"Traza.h"
+	"Constant.h"
+
+1433743123 c:\github\externallibs\uiobjects\src\fileio.h
+	<iostream>
+	<fstream>
+	<string>
+	<algorithm>
+	<vector>
+	<iterator>
+	"Excepcion.h"
+	"Traza.h"
+
+1486556089 source:c:\github\proyectos\preparaiop\preparaiop.cpp
+	"preparaiop.h"
+

@@ -273,12 +273,15 @@ void PreparaIOP::descargaDDLTablas(string ficheroTablas, string cadenaConexion, 
     //Para cada uno de las tablas definidas en el fichero especificado
     for (unsigned int i=0; i < lista.getSize(); i++){
         if (!lista.get(i).empty()){
+            string tablename = lista.get(i);
+            tablename = Constant::trim(tablename);
             //Primero creamos un fichero sql que tendra los comandos necesarios para hacer la descarga de las tablas
             cout << ceil(i/(float)lista.getSize()*100)
-                 << "% . " <<  lista.get(i) << " exportando ddl..." << endl;
+                 << "% . " <<  tablename << " exportando ddl..." << endl;
 
-            string destino = dirDestino + FILE_SEPARATOR + lista.get(i);
-            creaExportTablas(destino, lista.get(i), conFK);
+
+            string destino = dirDestino + FILE_SEPARATOR + tablename;
+            creaExportTablas(destino, tablename, conFK);
             //Finalmente ejecutamos este fichero creado con sqlplus
             lanzaScriptBBDD(destino + "_tmp.sql", cadenaConexion);
         }
