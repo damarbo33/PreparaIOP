@@ -9,6 +9,8 @@ PreparaIOP::PreparaIOP(){
     putenv("NLS_LANG=SPANISH_SPAIN.WE8ISO8859P15");
     PACKAGEWITHESQUEMA = false;
     MANAZASFLAG = true;
+    INSTANT_CLIENT_DIR = "instantclient_12_1";
+    CSV_DELIMITER = ";";
     inicializa();
 }
 
@@ -47,15 +49,23 @@ void PreparaIOP::inicializa(){
                 PACKAGEWITHESQUEMA = (valor.compare("1") == 0);
             } else if (variable.compare("manazasFlag") == 0){
                 MANAZASFLAG = (valor.compare("1") == 0);
+            } else if (variable.compare("instantclientDir") == 0){
+                INSTANT_CLIENT_DIR = valor;
+            } else if (variable.compare("csvDelimiter") == 0){
+                CSV_DELIMITER = valor;
             }
         }
     }
 }
 
+void PreparaIOP::generaPaquetes(string dirOrigen, string nomFichero){
+    generaPaquetes(dirOrigen, "", nomFichero);
+}
+
 /**
 *
 */
-void PreparaIOP::generaPaquetes(string dirOrigen, string nomFichero){
+void PreparaIOP::generaPaquetes(string dirOrigen, string extOrigen, string nomFichero){
     cout << "Preparando IOP de paquetes: " << dirOrigen << endl;
     int ficherosPreparados = 0;
     vector <FileProps> * files = new vector <FileProps>();
@@ -84,7 +94,8 @@ void PreparaIOP::generaPaquetes(string dirOrigen, string nomFichero){
         fileName = files->at(i).filename;
         extension = dir.getExtension(fileName);
         Constant::lowerCase(&extension);
-        if ((extension.compare(".sql") == 0 || extension.compare(".pls") == 0)){
+        if ( (!extOrigen.empty() && extension.compare("." + extOrigen) == 0) || 
+                (extOrigen.empty() && (extension.compare(".sql") == 0 || extension.compare(".pls") == 0)) ){
             cout << fileName << endl;
             catFile(files->at(i).dir + Constant::getFileSep() + fileName,
                 filenameDest, true);
@@ -274,7 +285,7 @@ void PreparaIOP::descargaDDLTablas(string ficheroTablas, string cadenaConexion, 
     for (unsigned int i=0; i < lista.getSize(); i++){
         if (!lista.get(i).empty()){
             string tablename = lista.get(i);
-            tablename = Constant::trim(tablename);
+            tablename = Constant::Trim(tablename);
             //Primero creamos un fichero sql que tendra los comandos necesarios para hacer la descarga de las tablas
             cout << ceil(i/(float)lista.getSize()*100)
                  << "% . " <<  tablename << " exportando ddl..." << endl;
@@ -420,12 +431,31 @@ void PreparaIOP::descargaVistas(string rutaFichero, string cadenaConexion){
         fileWriteln(file, "select 'ALTER SESSION SET NLS_LANGUAGE= ''SPANISH'';' from dual;");
         fileWriteln(file, "select 'ALTER SESSION SET NLS_ISO_CURRENCY = ''SPAIN'';' from dual;");
         fileWriteln(file, "select 'ALTER SESSION SET NLS_TERRITORY =''SPAIN'';' from dual;");
+        
+        fileWriteln(file, "begin");
+        //Esto es indispensable para que aparezcan los terminadores de sentencia sql (el punto y coma al final de la sentencia)
+        fileWriteln(file, "DBMS_METADATA.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR',true);");
+        //Esto hace que no tenga tanto detalle
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'TABLESPACE', false ); ");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false ); ");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'SIZE_BYTE_KEYWORD', true);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'REF_CONSTRAINTS', false);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'SPECIFICATION', false);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'FORCE', false);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'CONSTRAINTS', false);");
+        fileWriteln(file, "dbms_metadata.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT', false);");
+        fileWriteln(file, "end;");
+        fileWriteln(file, "/");
 
         fileWriteln(file, "DECLARE");
         fileWriteln(file, "      --Cursor para las vistas");
         fileWriteln(file, "      CURSOR cVista IS");
-        fileWriteln(file, "        SELECT VIEW_NAME, TEXT");
-        fileWriteln(file, "        FROM user_views;");
+        fileWriteln(file, "SELECT VIEW_NAME, 'VIEW' AS TIPO");
+        fileWriteln(file, "  FROM user_views");
+        fileWriteln(file, "union ");
+        fileWriteln(file, "select OBJECT_NAME, 'MATERIALIZED_VIEW' AS TIPO ");
+        fileWriteln(file, "  from all_objects where OBJECT_TYPE='MATERIALIZED VIEW';");
         fileWriteln(file, "      l_datos_cursor cVista%ROWTYPE;");
         fileWriteln(file, "      ");
         fileWriteln(file, "      v_clob CLOB;");
@@ -435,7 +465,7 @@ void PreparaIOP::descargaVistas(string rutaFichero, string cadenaConexion){
         fileWriteln(file, "        LOOP");
         fileWriteln(file, "          FETCH cVista INTO l_datos_cursor;");
         fileWriteln(file, "          EXIT WHEN cVista%NOTFOUND;");
-        fileWriteln(file, "          dbms_output.put_line(TRIM(dbms_metadata.get_ddl('VIEW',l_datos_cursor.VIEW_NAME)));");
+        fileWriteln(file, "          dbms_output.put_line(TRIM(dbms_metadata.get_ddl(l_datos_cursor.TIPO,l_datos_cursor.VIEW_NAME)));");
         fileWriteln(file, "          dbms_output.put_line('/');");
         fileWriteln(file, "        END LOOP;");
         fileWriteln(file, "        CLOSE cVista;");
@@ -481,10 +511,10 @@ void PreparaIOP::descargaDatosTablas(string filePaquetes, string dirDestino, str
             //Finalmente ejecutamos este fichero creado con sqlplus
             cout << ceil(i/(float)lista.getSize()*100)
                  << "% . " <<  lista.get(i) << " exportando datos de la tabla..." << endl;
-            lanzaScriptBBDD(destino + "_tmp.sql", cadenaConexion);
+            lanzaScriptBBDD(destino + "_tmp.sql", cadenaConexion, false, false);
             generaQueryExportTablas(destino + "_tmp2.sql");
             generaPLSQLExportTablas(destino + "(datos)");
-            lanzaScriptBBDD(destino + "(datos)_tmp.sql", cadenaConexion);
+            lanzaScriptBBDD(destino + "(datos)_tmp.sql", cadenaConexion, false, false);
         }
     }
     cout << "Fin descarga de paquetes: " << filePaquetes << endl;
@@ -729,8 +759,8 @@ void PreparaIOP::creaExportPaquete(string destino, string paquete, string owner)
 */
 string PreparaIOP::makeStrExpPackage(string upOwner, string paquete, string parte){
     return "select case when rownum = 1 THEN '"
-    + (PACKAGEWITHESQUEMA ? ("CREATE OR REPLACE " + parte + " " + upOwner + "." + paquete + "'") : ("CREATE OR REPLACE ' || trim(text)")) + " ELSE trim(text) END IF "
-    + "from all_source where LOWER(name)= LOWER('" + paquete + "') AND type='" + parte + "'  AND UPPER(owner) = UPPER('" + upOwner + "') order by rownum asc;";
+            + (PACKAGEWITHESQUEMA ? ("CREATE OR REPLACE " + parte + " " + upOwner + "." + paquete + "'") : ("CREATE OR REPLACE ' || text")) + " ELSE text END IF "
+    + "from all_source where LOWER(name)= LOWER('" + paquete + "') AND type='" + parte + "'  AND UPPER(owner) = UPPER('" + upOwner + "') order by type asc, line asc;";
 }
 
 /**
@@ -759,7 +789,7 @@ void PreparaIOP::creaExportProcFunc(string destino, string objeto, string owner,
         //Especificamos el comando para obtener el paquete y su body
         //fileWriteln(file, "PROMPT CREATE OR REPLACE;");
         fileWriteln(file, "select case when rownum = 1 THEN 'CREATE OR REPLACE ' || trim(text) ELSE trim(text) END IF from all_source where LOWER(name)= LOWER('"
-                            + objeto + "') AND type='" + tipo + "'  AND UPPER(owner) = UPPER('" + owner + "') order by rownum asc;");
+                            + objeto + "') AND type='" + tipo + "'  AND UPPER(owner) = UPPER('" + owner + "') order by type asc, line asc;");
 
         fileWriteln(file, "select '/' from dual;");
         //Finalizamos el fichero
@@ -816,6 +846,7 @@ void PreparaIOP::creaExportTablas(string destino, string tabla, bool refConstrai
         }
         fileWriteln(file, "end;");
         fileWriteln(file, "/");
+        
         fileWriteln(file, "SET SERVEROUTPUT ON;");
         fileWriteln(file, "SPOOL " + destino + ".sql;");
         Constant::lowerCase(&tabla);
@@ -830,7 +861,20 @@ void PreparaIOP::creaExportTablas(string destino, string tabla, bool refConstrai
         //Extraemos los indices de las tablas
         //fileWriteln(file, "SELECT DBMS_METADATA.GET_DDL('INDEX',u.index_name) FROM USER_INDEXES u WHERE table_name = '" + tabla + "';");
         //Extraemos los grants de las tablas
-        fileWriteln(file, "SELECT DBMS_METADATA.GET_DEPENDENT_DDL('OBJECT_GRANT',UPPER('" + tabla + "')) FROM DUAL;");
+        fileWriteln(file, "");
+        fileWriteln(file, "variable strGrants CLOB;");
+        fileWriteln(file, "begin");
+        fileWriteln(file, "  :strGrants := DBMS_METADATA.GET_DEPENDENT_DDL('OBJECT_GRANT',UPPER('" + tabla + "'));");
+        fileWriteln(file, "exception ");
+        fileWriteln(file, "when others then");
+        fileWriteln(file, "  :strGrants := null;");
+        fileWriteln(file, "end;");
+        fileWriteln(file, "/");
+        fileWriteln(file, "");
+        fileWriteln(file, "select nvl(:strGrants,'') from dual;");
+        fileWriteln(file, "");
+        
+        //Si no se obtiene nada con el strGrants, lanzamos unos grants por defecto
 //        fileWriteln(file, "SELECT");
 //        fileWriteln(file, "CASE WHEN SELECT_PRIV <> 'N' THEN ' GRANT SELECT ON ' || OWNER || '.' || TABLE_NAME || ' TO ' || GRANTEE || ';'  ELSE '' END ||");
 //        fileWriteln(file, "CASE WHEN INSERT_PRIV <> 'N' THEN ' GRANT INSERT ON ' || OWNER || '.' || TABLE_NAME || ' TO ' || GRANTEE || ';'  ELSE '' END ||");
@@ -840,6 +884,7 @@ void PreparaIOP::creaExportTablas(string destino, string tabla, bool refConstrai
 //        fileWriteln(file, "FROM table_privileges");
 //        fileWriteln(file, "where table_name = '" + tabla + "'");
 //        fileWriteln(file, "ORDER BY owner, table_name;");
+        
         //Finalizamos el fichero
         fileWriteln(file, "SPOOL OFF;");
         fileWriteln(file, "exit;");
@@ -1221,10 +1266,11 @@ void PreparaIOP::lanzaScriptBBDD(string fichero, string cadenaConexion){
 */
 void PreparaIOP::lanzaScriptBBDD(string fichero, string cadenaConexion, bool deleteFile, bool showLogs){
     if (dir.existe(fichero) || fichero.empty()){
-        string rutaSqlPlus = Constant::getAppDir() + FILE_SEPARATOR + "instantclient_12_1" + FILE_SEPARATOR + "sqlplus.exe";
+        string rutaSqlPlus = Constant::getAppDir() + FILE_SEPARATOR + INSTANT_CLIENT_DIR + FILE_SEPARATOR + "sqlplus.exe";
         string shortRutasqlPlus = dir.GetShortUtilName(rutaSqlPlus);
         if (!shortRutasqlPlus.empty()){
-            string comando = shortRutasqlPlus + (!fichero.empty() ? " -S " : " ") + cadenaConexion
+            string comando = (!fichero.empty() ? "exit | " : "") + shortRutasqlPlus 
+                                + (!fichero.empty() ? " -S -L " : " ") + cadenaConexion
                                 + (!fichero.empty() ? " @" + fichero : "")
                                 + (!fichero.empty() && showLogs ? " > " + dir.getFolder(fichero) + FILE_SEPARATOR + dir.getFileNameNoExt(fichero) + ".log" : "")
                                 ;
@@ -1253,7 +1299,9 @@ void PreparaIOP::ejecutaScriptsDir(string directorio, string cadenaConexion){
     for (unsigned int i=0; i < files->size(); i++){
         cout << files->at(i).filename << endl;
         extension = dir.getExtension(files->at(i).filename);
-        if ((extension.compare(".sql") == 0 || extension.compare(".pls") == 0)){
+        Constant::lowerCase(&extension);
+        if ((extension.compare(".sql") == 0 || extension.compare(".pls") == 0 || extension.compare(".prc") == 0
+                || extension.compare(".fnc") == 0 || extension.compare(".pks") == 0)){
             lanzaScriptBBDD(directorio + Constant::getFileSep() + files->at(i).filename, cadenaConexion, false, true);
         }
     }
@@ -1349,7 +1397,18 @@ void PreparaIOP::exportaDatosTablas(string destino, string tabla){
     Constant::lowerCase(&tabla);
     string salida = destino + "_tmp.sql";
     file->open(salida.c_str(), ios::out | ios::trunc);
-
+    
+    string tableName="";
+    string tableOwner="";
+   
+    int pos = tabla.find_first_of(".");
+    if (pos >= 0){
+        tableOwner = tabla.substr(0,pos);
+        tableName = tabla.substr(pos+1);
+    } else {
+        tableName = tabla;
+    }
+    
     /**En primer lugar obtenemos la estructura de las tablas*/
     if (file->is_open()){
         fileWriteln(file, "set linesize 300");
@@ -1359,7 +1418,9 @@ void PreparaIOP::exportaDatosTablas(string destino, string tabla){
         fileWriteln(file, "SET FEEDBACK OFF");
         fileWriteln(file, "SET TERMOUT OFF");
         fileWriteln(file, "SPOOL " + destino + "_tmp2.sql;");
-        fileWriteln(file, "SELECT table_name, column_name, data_type, owner FROM ALL_TAB_COLUMNS WHERE UPPER(table_name) = UPPER('" + tabla + "') order by column_name asc;");
+        fileWriteln(file, "SELECT table_name, column_name, data_type, owner FROM ALL_TAB_COLUMNS WHERE UPPER(table_name) = UPPER('" + tableName + "')"  
+                + (tableOwner.empty() ? "" : " and UPPER(owner) = upper('" + tableOwner + "')")
+                + " order by column_name asc;");
         //Finalizamos el fichero
         fileWriteln(file, "SPOOL OFF;");
         fileWriteln(file, "exit;");
@@ -1490,47 +1551,57 @@ void PreparaIOP::generaPLSQLExportTablas(string destino){
 
         fileWriteln(file, "     SELECT " + strCol);
         fileWriteln(file, "     FROM " + tablaInfo.esquema + "." + tablaInfo.tabla);
-        fileWriteln(file, "     ORDER BY " + strOrder + " ASC;");
+        //fileWriteln(file, "     ORDER BY " + strOrder + " ASC;");
+        fileWriteln(file, ";");
         fileWriteln(file, "");
-        fileWriteln(file, "     l_datos_cursor   cursor_sql%ROWTYPE;");
+        //fileWriteln(file, "     l_datos_cursor   cursor_sql%ROWTYPE;");
+        
+        fileWriteln(file, "     TYPE t_bulk_tab IS TABLE OF cursor_sql%ROWTYPE;");
+        fileWriteln(file, "     l_tab t_bulk_tab;");
+        
         fileWriteln(file, "BEGIN");
         fileWriteln(file, "     OPEN cursor_sql;");
         fileWriteln(file, "     LOOP");
-        fileWriteln(file, "        FETCH cursor_sql INTO l_datos_cursor;");
+        fileWriteln(file, "        FETCH cursor_sql");
+        fileWriteln(file, "        BULK COLLECT INTO l_tab LIMIT 5000;");
         fileWriteln(file, "        EXIT WHEN cursor_sql%NOTFOUND;");
-        fileWriteln(file, "        v_tmp_clob := 'insert into " + tablaInfo.esquema + "." + tablaInfo.tabla + " (" + strOrder + ") VALUES (';");
+        fileWriteln(file, "        FOR indx IN 1 .. l_tab.COUNT");
+        fileWriteln(file, "        LOOP");
+            fileWriteln(file, "        v_tmp_clob := 'insert into " + tablaInfo.esquema + "." + tablaInfo.tabla + " (" + strOrder + ") VALUES (';");
 
-        string strDatosCursor = "";
-        string tableColumn = "";
-        //Recorremos cada una de las columnas segun su tipo
-        for (unsigned int i=0; i<tablaInfo.columnas.size(); i++){
+            string strDatosCursor = "";
+            string tableColumn = "";
+            //Recorremos cada una de las columnas segun su tipo
+            for (unsigned int i=0; i<tablaInfo.columnas.size(); i++){
 
-            fileWriteln(file,"      IF l_datos_cursor." + tablaInfo.columnas.at(i) + " is null THEN");
-            strDatosCursor = "          v_tmp_clob := v_tmp_clob || 'NULL" + string((i < tablaInfo.columnas.size() - 1) ? ",'" : "'") + ";";
-            fileWriteln(file,strDatosCursor);
-            fileWriteln(file,"      ELSE");
+                fileWriteln(file,"      IF l_tab(indx)." + tablaInfo.columnas.at(i) + " is null THEN");
+                strDatosCursor = "          v_tmp_clob := v_tmp_clob || 'NULL" + string((i < tablaInfo.columnas.size() - 1) ? ",'" : "'") + ";";
+                fileWriteln(file,strDatosCursor);
+                fileWriteln(file,"      ELSE");
 
-            if (tablaInfo.tipoColumnas.at(i).find("date") != std::string::npos){
-                //Los tipos de datos de fecha deberian tener una conversion especial
-                strDatosCursor = "        v_tmp_clob := v_tmp_clob || 'TO_DATE(''' || l_datos_cursor." + tablaInfo.columnas.at(i) + " || ''',''" + FORMATO_FECHA + "'')";
-            } else {
-                //Reemplazamos las posibles comillas simples con la llamada al replace
-                strDatosCursor = "        v_tmp_clob := v_tmp_clob || '''' || REPLACE(l_datos_cursor." + tablaInfo.columnas.at(i) + ",'''','''''') || '''";
+                if (tablaInfo.tipoColumnas.at(i).find("date") != std::string::npos){
+                    //Los tipos de datos de fecha deberian tener una conversion especial
+                    strDatosCursor = "        v_tmp_clob := v_tmp_clob || 'TO_DATE(''' || l_tab(indx)." + tablaInfo.columnas.at(i) + " || ''',''" + FORMATO_FECHA + "'')";
+                } else {
+                    //Reemplazamos las posibles comillas simples con la llamada al replace
+                    strDatosCursor = "        v_tmp_clob := v_tmp_clob || '''' || REPLACE(l_tab(indx)." + tablaInfo.columnas.at(i) + ",'''','''''') || '''";
+                }
+
+                //Introducimos la coma para separar las columnas en los insert
+                if (i < tablaInfo.columnas.size() - 1){
+                    strDatosCursor = strDatosCursor +",'";
+                } else {
+                    strDatosCursor = strDatosCursor +"'";
+                }
+                //Finalizamos la sentencia sql
+                fileWriteln(file, strDatosCursor + ";");
+
+                fileWriteln(file,"      END IF;");
             }
-
-            //Introducimos la coma para separar las columnas en los insert
-            if (i < tablaInfo.columnas.size() - 1){
-                strDatosCursor = strDatosCursor +",'";
-            } else {
-                strDatosCursor = strDatosCursor +"'";
-            }
-            //Finalizamos la sentencia sql
-            fileWriteln(file, strDatosCursor + ";");
-
-            fileWriteln(file,"      END IF;");
-        }
-        fileWriteln(file, "        v_tmp_clob := v_tmp_clob || ');';");
-        fileWriteln(file, "        DBMS_OUTPUT.put_line (v_tmp_clob);");
+            fileWriteln(file, "        v_tmp_clob := v_tmp_clob || ');';");
+            fileWriteln(file, "        DBMS_OUTPUT.put_line (v_tmp_clob);");
+            fileWriteln(file, "     END LOOP;");
+            
         fileWriteln(file, "     END LOOP;");
         fileWriteln(file, "     CLOSE cursor_sql;");
         fileWriteln(file, "END;");
@@ -1700,11 +1771,11 @@ void PreparaIOP::extraerTodo(string ficheroTablasDDL, string ficheroTablasMetada
     //Realizamos la descarga de todos los puntos
     //Descargando paquetes
     descargaPaquetes(ficheroPaquetes, dirPaquetes, cadena);
-    generaPaquetes(dirPaquetes, fileNameScriptPKG);
+    generaPaquetes(dirPaquetes, "sql", fileNameScriptPKG);
     catText(dirPaquetes + Constant::getFileSep() + fileNameScriptPKG + Constant::fechaAnyo() + ".sql", "\nexit;");
     //Descargando DDL
     descargaDDLTablas(ficheroTablasDDL, cadena, dirTablas, false);
-    generaPaquetes(dirTablas, fileNameScriptDDL);
+    generaPaquetes(dirTablas, "sql", fileNameScriptDDL);
     catText(dirPaquetes + Constant::getFileSep() + fileNameScriptDDL + Constant::fechaAnyo() + ".sql", "\nexit;");
     //Descargando datos de tablas
     descargaDatosTablas(ficheroTablasMetadatos, dirMetadatos, cadena);
@@ -1936,3 +2007,45 @@ void PreparaIOP::creaFicheroListaObjetos(string destino, string cadenaConexion, 
 
 }
 
+/**
+*
+*/
+void PreparaIOP::generarExcelFromScript(string fichero, string cadena){
+    ofstream *file = new ofstream();
+    Constant::lowerCase(&fichero);
+    string directorio = dir.getFolder(fichero) + FILE_SEPARATOR;
+    string salida = directorio + "excel_tmp.sql";
+    file->open(salida.c_str(), ios::out | ios::trunc);
+        
+    if (file->is_open()){
+        fileWriteln(file, "SET SERVEROUTPUT OFF");
+        fileWriteln(file, "SET TIMING OFF");
+        fileWriteln(file, "SET VERIFY OFF");
+        fileWriteln(file, "SET FEED OFF");
+        fileWriteln(file, "SET ECHO OFF");
+        fileWriteln(file, "SET TERM OFF");
+        fileWriteln(file, "SET FEEDBACK OFF");
+        //Para generar csv no es necesario estas lineas. Descomentar si se 
+        //quiere generar un excel basado en html. Para ello SET MARKUP HTML ON
+        //fileWriteln(file, "SET UNDERLINE OFF");
+        //fileWriteln(file, "set PAGESIZE 4000");
+        //fileWriteln(file, "set LINESIZE 4000");
+        fileWriteln(file, "set heading on");
+        fileWriteln(file, "SET MARKUP CSV ON DELIMITER \"" + CSV_DELIMITER + "\"");
+        fileWriteln(file, "spool on");
+        fileWriteln(file, "spool " + directorio + "output.csv");
+        fileWriteln(file, "@" + fichero + ";");
+        fileWriteln(file, "spool off");
+        fileWriteln(file, "exit");
+        file->close();
+        Traza::print("writeToFile::Fichero escrito correctamente", W_DEBUG);
+        lanzaScriptBBDD(salida, cadena);
+
+    } else {
+        Traza::print("writeToFile::Unable to write file", W_ERROR);
+        file->close();//Cerramos el fichero
+        delete file;
+        throw(Excepcion(EFIO));
+    }
+    delete file;
+}

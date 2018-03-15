@@ -48,3 +48,8 @@ Temporary Items
 instantclient_12_1
 obj
 bin
+Release
+instantclient_12_2
+build
+dist
+nbproject

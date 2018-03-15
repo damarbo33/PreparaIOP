@@ -11,14 +11,14 @@ void setColor(int TextColor,int BackgroundColor)
 {
     /*
 0 : Noir
-1 : Bleu foncé
-2 : Vert foncé
+1 : Bleu fonc
+2 : Vert fonc
 3 : Turquoise
-4 : Rouge foncé
+4 : Rouge fonc
 5 : Violet
-6 : Vert caca d’oie
+6 : Vert caca d
 7 : Gris clair
-8 : Gris foncé
+8 : Gris fonc
 9 : Bleu fluo
 A : Vert fluo
 B : Turquoise
@@ -172,6 +172,7 @@ int main(){
         mostrarTexto("19. Ejecutar scripts de un directorio");
         mostrarTexto("20. Generar drops de tablas, paquetes, vistas y secuencias");
         mostrarTexto("21. Recompilar");
+        mostrarTexto("22. Exportar querys a csv");
         setColor(0x0, 0x7);
         mostrarTexto("0. Salir");
 
@@ -205,7 +206,8 @@ int main(){
                 }
             } else if (respuesta.compare("2") == 0){
                 respuesta = preguntaDir("Introduzca directorio de ficheros de la entrega");
-                prepare->generaPaquetes(respuesta, "02-script_XXX_packages_");
+                string extension = preguntaDatos("Especifique filtro de ficheros (por defecto: sql)");
+                prepare->generaPaquetes(respuesta, extension, "02-script_XXX_packages_");
             } else if (respuesta.compare("3") == 0){
                 string modFilesDir = preguntaDir("Introduzca directorio de ficheros de los que generar el rollback");
                 string srcDir = preguntaDir("Introduzca directorio de ficheros origen");
@@ -293,7 +295,7 @@ int main(){
                 getline (cin, fichero);
                 prepare->lanzaScriptBBDD(fichero, cadena, false, true);
             } else if (respuesta.compare("19") == 0){
-                cout << "****Especifique la bbdd en la que se ejecutarán los scripts****" << endl;
+                cout << "****Especifique la bbdd en la que se ejecutaran los scripts****" << endl;
                 string cadena = elegirCadenaConexion(Constant::getAppDir() + FILE_SEPARATOR + "CadenaConexion.txt");
                 string directorio = "";
                 cout << "Indique el directorio donde estan todos los scripts sql a ejecutar" << endl;
@@ -313,6 +315,12 @@ int main(){
                 cout << "Indique el directorio donde desea generar el log de la recompilacion" << endl;
                 getline (cin, directorio);
                 prepare->recompilar(directorio, cadena);
+            } else if (respuesta.compare("22") == 0){
+                string cadena = elegirCadenaConexion(Constant::getAppDir() + FILE_SEPARATOR + "CadenaConexion.txt", prepare->MANAZASFLAG);
+                string fichero = "";
+                cout << "Indique el fichero con las querys de las que generar el csv " << endl;
+                getline (cin, fichero);
+                prepare->generarExcelFromScript(fichero, cadena);
             }
         } catch(Excepcion &e) {
             cout << "Error: " +  string(e.getMessage()) << endl;

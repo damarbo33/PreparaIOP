@@ -29,8 +29,9 @@ class PreparaIOP
         PreparaIOP();
         /** Default destructor */
         virtual ~PreparaIOP();
-        /**Generamos los paquetes*/
         void generaPaquetes(string dirOrigen, string nomFichero);
+        /**Generamos los paquetes*/
+        void generaPaquetes(string dirOrigen, string extOrigen, string nomFichero);
         /**Generamos los metadatos*/
         void generaMetadata(string dirOrigen, string claveDir, string nomFichero);
         /**Preparamos la descarga de paquetes*/
@@ -54,6 +55,7 @@ class PreparaIOP
         void creaConstraints(string ficheroTablas);
         void ejecutaScriptsDir(string directorio, string cadenaConexion);
         void creaConstraints(string ficheroTablas, string dirDestino);
+        void generarExcelFromScript(string destino, string cadena);
 
         void creaExportTipos(string destino);
         void descargaTipos(string rutaFichero, string cadenaConexion);
@@ -69,7 +71,7 @@ class PreparaIOP
         void creaFicheroListaObjetos(string destino, string cadenaConexion, string tipo);
         void descargaDatosProcFunc(string filePaquetes, string cadenaConexion, string tipo);
         void importarTodo(string ficheroTablasDDL, string ficheroTablasMetadatos, string ficheroPaquetes, string cadena, string destino);
-
+         
         bool MANAZASFLAG;
 
 
@@ -114,6 +116,8 @@ class PreparaIOP
         string FORMATO_FECHA;
         string SQLCONNECTIOP;
         bool PACKAGEWITHESQUEMA;
+        string INSTANT_CLIENT_DIR;
+        string CSV_DELIMITER;
 
 
 
